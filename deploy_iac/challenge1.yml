@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Steve Seukap / Udacity - This template deploys a VPC
+Description: Template deploys a apache webserver in existing VPC
 Resources:
   "udacityc1sg":
     Type: AWS::EC2::SecurityGroup
