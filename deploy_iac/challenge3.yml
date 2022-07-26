@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template deploys the server for challenge 3 
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: An environment name that will be prefixed to resource names
+Resources:
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties: 
+      Roles: 
+        - !Ref IAMRole
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Allows http traffic
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-vpcid"
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+  EC2Instance: 
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.micro
+      ImageId: "ami-0cff7528ff583bf9a"
+      IamInstanceProfile: !Ref InstanceProfile
+      KeyName: "VocareumKey2"
+      BlockDeviceMappings: 
+        - DeviceName: "/dev/sdm"
+          Ebs:
+            VolumeSize: "20"
+      SubnetId:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-priv-sn-id"
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      Tags:
+        - Key: Name
+          Value: webserver
+
+
+      

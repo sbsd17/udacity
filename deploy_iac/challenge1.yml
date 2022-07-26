@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Steve Seukap / Udacity - This template deploys a VPC
+Resources:
+  "udacityc1sg":
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Udacity challenge 1 SG
+      VpcId: vpc-08519c8373426c246
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+  "udacityc1webserver":
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0022f774911c1d690
+      InstanceType: t3.micro
+      SubnetId: subnet-0e5d4c3d5dfaed01c
+      SecurityGroupIds:
+        - Ref: udacityc1sg
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo yum update -y
+          sudo yum install -y httpd
+          sudo systemctl start httpd
+          sudo systemctl enable httpd

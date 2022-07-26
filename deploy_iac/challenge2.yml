@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template deploys the network infrastructure for challenge 2 
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: An environment name that will be prefixed to resource names
+  VPCCIDR:
+    Type: String
+    Description: IP Range in CIDR notation for VPC
+    Default: 10.0.0.0/16
+  PublicSubnetCIDR:
+      Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+      Type: String
+      Default: 10.0.1.0/24
+  PrivateSubnetCIDR:
+      Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+      Type: String
+      Default: 10.0.2.0/24
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-vpc
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-igw
+  IGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      InternetGatewayId: !Ref IGW
+      VpcId: !Ref VPC
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PublicSubnetCIDR
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name 
+          Value: !Sub ${EnvironmentName} public subnet
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnetCIDR
+      MapPublicIpOnLaunch: false
+      Tags: 
+        - Key: Name 
+          Value: !Sub ${EnvironmentName} private subnet
+  EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: IGWAttachment
+    Properties:
+      Domain: vpc
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt EIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Name 
+          Value: !Sub ${EnvironmentName} public routetable
+  DefaultPublicRoute: 
+    Type: AWS::EC2::Route
+    DependsOn: IGWAttachment
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IGW
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Name 
+          Value: !Sub ${EnvironmentName} private routetable
+  DefaultPrivateRoute: 
+    Type: AWS::EC2::Route
+    DependsOn: IGWAttachment
+    Properties: 
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      # GatewayId: !Ref NatGateway
+      NatGatewayId: !Ref NatGateway
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet
+Outputs: 
+  VPC: 
+    Description: A reference to the created VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${EnvironmentName}-vpcid
+  PublicSubnet:
+    Description: A reference to the public subnet
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub ${EnvironmentName}-pub-sn
+  PrivateSubnet:
+    Description: A reference to the private subnet
+    Value: !Ref PrivateSubnet
+    Export:
+      Name: !Sub ${EnvironmentName}-priv-sn
+  PrivateSubnetId:
+    Description: A reference to the private subnet id
+    Value: !GetAtt PrivateSubnet.SubnetId
+    Export:
+      Name: !Sub ${EnvironmentName}-priv-sn-id
